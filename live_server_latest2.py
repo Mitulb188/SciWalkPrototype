@@ -31,6 +31,8 @@ client_data_lock = threading.Lock()
 # --- Background Scheduler ---
 scheduler = BackgroundScheduler(daemon=True, timezone=ZoneInfo("Europe/Berlin"))
 
+walking_speed = 1.2 #in m/s
+
 # --- Helper functions (Unchanged) ---
 def calculate_tmrt(Tg, Ta, Va, epsilon=0.95, D=0.1):
     """Calculates the Mean Radiant Temperature (Tmrt) in Celsius."""
@@ -40,11 +42,16 @@ def calculate_tmrt(Tg, Ta, Va, epsilon=0.95, D=0.1):
     )**0.25 - 273.15
     return tmrt
 
-def adjust_wind_speed(v_measured, h_measured=10):
-    """Adjusts wind speed from a measured height to the standard 10m height."""
-    if h_measured == 10:
-        return v_measured
-    v_10m = v_measured * (math.log(10 / 0.01) / (math.log(h_measured / 0.01) if h_measured != 0.01 else 1))
+def adjust_wind_speed(v_measured, h_measured = 1.55):
+    """Adjusts wind speed from a measured height to the standard 10m height. Also assumes that the direction is opposite"""
+    if (v_measured < walking_speed) and (h_measured != 10):
+        v_10m = (v_measured) * (math.log(10 / 0.01) / (math.log(h_measured / 0.01) if h_measured != 0.01 else 1))
+    if (v_measured >= walking_speed) and (h_measured != 10):
+        v_10m = (v_measured - walking_speed) * (math.log(10 / 0.01) / (math.log(h_measured / 0.01) if h_measured != 0.01 else 1))
+    elif (v_measured >= walking_speed) and h_measured == 10:
+        v_10m = v_measured - walking_speed
+    else:
+        v_10m = (v_measured - walking_speed) * (math.log(10 / 0.01) / (math.log(h_measured / 0.01) if h_measured != 0.01 else 1))
     return v_10m
 
 # --- Scheduled Job ---
@@ -91,10 +98,13 @@ def perform_measurement():
     tmrt, utci_value = "N/A", "N/A"
     if all(isinstance(i, (int, float)) for i in [globe_temp, air_temp, air_speed, humidity]):
         try:
-            tmrt = calculate_tmrt(globe_temp, air_temp, air_speed)
             adjusted_v_10m = adjust_wind_speed(air_speed)
             if adjusted_v_10m <= float(0.5):
                 adjusted_v_10m = 0.5
+            tmrt = calculate_tmrt(globe_temp, air_temp, adjusted_v_10m)
+            # adjusted_v_10m = adjust_wind_speed(air_speed)
+            # if adjusted_v_10m <= float(0.5):
+            #     adjusted_v_10m = 0.5
             utci_result = utci(tdb=air_temp, tr=tmrt, v=adjusted_v_10m, rh=humidity)
             utci_value = utci_result["utci"]
         except Exception as e:
@@ -107,7 +117,8 @@ def perform_measurement():
         f"{humidity:.2f}" if isinstance(humidity, (int, float)) else "N/A",
         f"{globe_temp:.2f}" if isinstance(globe_temp, (int, float)) else "N/A",
         f"{air_temp:.2f}" if isinstance(air_temp, (int, float)) else "N/A",
-        f"{air_speed:.2f}" if isinstance(air_speed, (int, float)) else "N/A", # Formatted air_speed
+        f"{adjusted_v_10m:.2f}" if isinstance(adjusted_v_10m, (int, float)) else "N/A", # Adjusted air_speed
+        f"{air_speed:.2f}" if isinstance(air_speed, (int, float)) else "N/A", # Original air_speed
         f"{tmrt:.2f}" if isinstance(tmrt, (int, float)) else "N/A",
         f"{utci_value:.2f}" if isinstance(utci_value, (int, float)) else "N/A" # Formatted UTCI
     ]

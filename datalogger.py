@@ -12,7 +12,7 @@ FILENAME = f"weather_data_{datetime.now().strftime('%Y-%m-%d')}.xlsx"
 
 DATA_HEADERS = [
     "Date", "Time", "GPS Coordinates", "Altitude (m)",
-    "Relative Humidity (%)", "Globe Temp (C)", "Air Temperature (C)","Air Speed (m/s)" ,"TMRT (C)", "UTCI"
+    "Relative Humidity (%)", "Globe Temp (C)", "Air Temperature (C)","Adjusted Air Speed (m/s)", "Original Air Speed (m/s)" ,"TMRT (C)", "UTCI"
 ]
 METADATA_LABELS = [
     "SciWalK, Pilot Phase, 2025-2026",
