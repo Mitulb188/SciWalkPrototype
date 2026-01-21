@@ -7,12 +7,11 @@
 # which is calibrated for a 5V sensor supply.
 #
 # Refactored to be importable by other scripts.
+
 import time
 import board
 import busio
-#from Adafruit_ADS1x15 import ADS1x15
-#import adafruit_ads1x15.ads1115 as ADS
-from adafruit_ads1x15.ads1115 import ADS1115
+import adafruit_ads1x15.ads1115 as ADS
 from adafruit_ads1x15.analog_in import AnalogIn
 import math
 
@@ -28,7 +27,7 @@ try:
     i2c = busio.I2C(board.SCL, board.SDA)
 
     # Create the ADC object using the I2C bus
-    ads = ADS1115(i2c)
+    ads = ADS.ADS1115(i2c)
 
     # This gain setting is crucial. The sensor outputs up to 5V.
     # A gain of 2/3 allows the ADS1115 to measure up to 6.144V.
@@ -86,19 +85,19 @@ def get_wind_data():
                         (1.0727 * equiv_tmp_adunits) + 47.172
 
     # 3. Convert the theoretical zero-wind ADC value to volts and apply manual calibration
-    zero_wind_volts = (zero_wind_adunits * (5.0 / 1023.0)) - ZERO_WIND_ADJUSTMENT
-
-    # 4. Calculate the wind speed using the power regression formula
+   # zero_wind_volts = (zero_wind_adunits * (5.0 / 1023.0)) - ZERO_WIND_ADJUSTMENT
+    zero_wind_volts = 0.700
+       # 4. Calculate the wind speed using the power regression formula
     # V_raw = V_zero + b * WindSpeed^c
     # We solve for WindSpeed: WindSpeed = ((V_raw - V_zero) / b)^(1/c)
-    wind_speed_mph = 0.0
+    wind_speed_mps = 0.0
     # Ensure the measured voltage is greater than the zero-wind voltage
     if rv_wind_volts > zero_wind_volts:
-        wind_speed_mph = math.pow(((rv_wind_volts - zero_wind_volts) / 0.2300), 2.7265)
+        wind_speed_mps = math.pow(((rv_wind_volts - 0.650) /1.833),5.350)
 
     # --- Final values ---
     temperature_c = temp_c_times_100 / 100.0
-    wind_speed_mps = wind_speed_mph / 2.237
+    #wind_speed_mps = wind_speed_mph / 2.237
 
     return temperature_c, rv_wind_volts, zero_wind_volts, wind_speed_mps
 
@@ -131,7 +130,7 @@ if __name__ == "__main__":
                 temp_c, rv_volts, zero_volts, wind_mps = get_wind_data()
                 
                 # --- Print Results ---
-                print(f"Temp: {temp_c:.2f}°C | "
+                print(f"Temp: {temp_c:.2f}C | "
                       f"RV Volts: {rv_volts:.3f}V | "
                       f"Zero Wind Volts: {zero_volts:.3f}V | "
                       f"Wind Speed: {wind_mps:.2f} MPS")
